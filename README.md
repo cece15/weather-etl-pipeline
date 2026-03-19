@@ -192,12 +192,6 @@ python etl_pipeline.py
 
 ---
 
-## License
-
-MIT License — see [LICENSE](LICENSE) for details.
-
----
-
 ## Author
 
 **Cynthia Mutua** — MS Data Science & Analytics, Grand Valley State University
