@@ -15,8 +15,16 @@ A production-pattern ETL pipeline that extracts historical weather data from CSV
 ## Dashboard Preview
 
 >  [View Live Looker Studio Dashboard](https://lookerstudio.google.com/reporting/7f2762fb-3187-4767-ad7e-ee9708269c04)
-> 
->  [View Notebook on Google Colab](https://colab.research.google.com/drive/19O1rZ1WewTlzk16MWzNl0k0uApxSMDyR?usp=sharing)
+>
+> ## Dashboard Preview
+> [View Notebook on Google Colab](https://colab.research.google.com/drive/19O1rZ1WewTlzk16MWzNl0k0uApxSMDyR?usp=sharing)
+> [View Live Looker Studio Dashboard](https://lookerstudio.google.com/reporting/7f2762fb-3187-4767-ad7e-ee9708269c04)
+
+**4-page interactive dashboard built on BigQuery:**
+- **Page 1 — Overview:** 10-year temperature trend + KPI scorecards
+- **Page 2 — Temperature Analysis:** Avg temp by Part of Day & Weekday  
+- **Page 3 — Weather Factors:** Monthly humidity & wind speed trends
+- **Page 4 — Heatmap:** Avg temperature across Part of Day × Weekday
 
 ---
 
