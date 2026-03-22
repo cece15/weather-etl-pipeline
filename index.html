@@ -648,15 +648,15 @@
     </p>
 
     <div class="hero-pipeline">
-      <div class="pipe-node"><span class="pipe-icon">📥</span> EXTRACT</div>
+      <div class="pipe-node"> EXTRACT</div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-node"><span class="pipe-icon">⚙️</span> TRANSFORM</div>
+      <div class="pipe-node"> TRANSFORM</div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-node"><span class="pipe-icon">💾</span> LOAD · SQLite</div>
+      <div class="pipe-node"> LOAD · SQLite</div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-node"><span class="pipe-icon">☁️</span> LOAD · BigQuery</div>
+      <div class="pipe-node"> LOAD · BigQuery</div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-node"><span class="pipe-icon">📊</span> VISUALIZE</div>
+      <div class="pipe-node"> VISUALIZE</div>
     </div>
 
     <div class="hero-actions">
@@ -784,9 +784,9 @@
     <!-- Featured: Daily trend -->
     <div class="viz-card viz-featured fade-up">
       <div class="viz-header">
-        <div class="viz-header-left">📈 Page 1 — Daily Temperature Trend + KPI Scorecards · 2006–2016</div>
+        <div class="viz-header-left"> Page 1 — Daily Temperature Trend + KPI Scorecards · 2006–2016</div>
       </div>
-      <img src="figures/Daily_Temperature_Trend_2006-2016_.png" alt="Daily temperature trend 2006-2016 with KPI scorecards" class="viz-img" style="max-height:420px; object-fit:contain; padding:0;">
+      <img src="figures/Daily Temperature Trend 2006-2016.png" alt="Daily temperature trend 2006-2016 with KPI scorecards" class="viz-img" style="max-height:420px; object-fit:contain; padding:0;">
       <div class="viz-body">
         <div class="viz-title">10 years of seasons — captured in a single chart</div>
         <p class="viz-desc">The regular oscillation between ~9°C and ~24°C repeats predictably across all 10 years, confirming strong seasonal patterns in the dataset. The KPI scorecards at the bottom show dataset-wide averages directly from BigQuery: 17.89°C average temperature, 0.68 humidity, 10.14 km/h wind speed. These are the numbers that power the full dashboard.</p>
@@ -798,9 +798,9 @@
     <div class="viz-two">
       <div class="viz-card fade-up">
         <div class="viz-header">
-          <div class="viz-header-left">🌡️ Page 2 — Temperature Analysis by Time of Day & Weekday</div>
+          <div class="viz-header-left"> Page 2 — Temperature Analysis by Time of Day & Weekday</div>
         </div>
-        <img src="figures/Temperature_Analysis_by_Time.png" alt="Temperature analysis by part of day and weekday" class="viz-img" style="max-height:300px; object-fit:contain; background:#fff; padding:1rem;">
+        <img src="figures/Temperature Analysis by Time.png" alt="Temperature analysis by part of day and weekday" class="viz-img" style="max-height:300px; object-fit:contain; background:#fff; padding:1rem;">
         <div class="viz-body">
           <div class="viz-title">Afternoon is consistently 8°C hotter than Night</div>
           <p class="viz-desc">The Part_of_Day feature engineered during transformation proves analytically valuable — afternoons average 22.7°C vs 14.7°C at night. Weekday analysis shows temperature is stable across days of the week, confirming the seasonal (not weekly) nature of temperature variation.</p>
@@ -810,9 +810,9 @@
 
       <div class="viz-card fade-up">
         <div class="viz-header">
-          <div class="viz-header-left">💧 Page 3 — Humidity & Wind Speed Monthly Trends</div>
+          <div class="viz-header-left"> Page 3 — Humidity & Wind Speed Monthly Trends</div>
         </div>
-        <img src="figures/Humidity___Win_Speeds_Trends.png" alt="Humidity and wind speed monthly trends" class="viz-img" style="max-height:300px; object-fit:contain; background:#fff; padding:1rem;">
+        <img src="figures/Humidity & Wind Speeds Trends.png" alt="Humidity and wind speed monthly trends" class="viz-img" style="max-height:300px; object-fit:contain; background:#fff; padding:1rem;">
         <div class="viz-body">
           <div class="viz-title">Wind speed drops as the year progresses; humidity rises</div>
           <p class="viz-desc">Wind speeds peak in early spring (~13 km/h) and decline through autumn (~9 km/h). Humidity shows an inverse pattern — relatively stable mid-year, rising toward year-end. These opposing trends suggest a seasonal weather cycle where spring brings drier, windier conditions.</p>
@@ -824,9 +824,9 @@
     <!-- Heatmap -->
     <div class="viz-card fade-up">
       <div class="viz-header">
-        <div class="viz-header-left">🔥 Page 4 — Temperature Heatmap: Part of Day × Weekday</div>
+        <div class="viz-header-left"> Page 4 — Temperature Heatmap: Part of Day × Weekday</div>
       </div>
-      <img src="figures/Temperature_Heatmap_-_Part_of_Day_x_Weekday.png" alt="Temperature heatmap part of day by weekday" class="viz-img" style="max-height:300px; object-fit:contain; background:#fff; padding:1.5rem;">
+      <img src="figures/Temperature Heatmap - Part of Day x Weekday.png" alt="Temperature heatmap part of day by weekday" class="viz-img" style="max-height:300px; object-fit:contain; background:#fff; padding:1.5rem;">
       <div class="viz-body">
         <div class="viz-title">The most analytical chart in the dashboard — and the most telling</div>
         <p class="viz-desc">This pivot table heatmap crosses Part_of_Day (rows) with Weekday (columns) — both features engineered during the Transform phase. The gradient from white (Night, ~14.6°C) to dark blue (Afternoon, ~23°C) is consistent across every single day of the week. <strong>Temperature variation is driven entirely by time of day, not day of week</strong> — a clean, analytically rigorous finding made possible by the feature engineering step.</p>
