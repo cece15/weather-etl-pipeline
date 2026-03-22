@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Data ETL Pipeline | Cynthia Mutua</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --storm:    #0b1120;
+    --storm2:   #111c30;
+    --storm3:   #162440;
+    --sky:      #1a3a5c;
+    --horizon:  #1e5180;
+    --electric: #38bdf8;
+    --electric2:#7dd3fc;
+    --lightning:#f0f9ff;
+    --rain:     #93c5fd;
+    --mist:     rgba(56,189,248,0.08);
+    --mist2:    rgba(56,189,248,0.04);
+    --text:     #e0f0ff;
+    --text2:    #93b8d4;
+    --text3:    #4a6a8a;
+    --border:   rgba(56,189,248,0.1);
+    --border2:  rgba(56,189,248,0.2);
+    --gold:     #fbbf24;
+    --teal:     #14b8a6;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--storm);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── ATMOSPHERIC BACKGROUND ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 120% 60% at 50% -10%, rgba(26,58,92,0.8) 0%, transparent 60%),
+      radial-gradient(ellipse 80% 40% at -20% 50%, rgba(56,189,248,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse 60% 80% at 120% 80%, rgba(20,184,166,0.04) 0%, transparent 50%);
+  }
+
+  /* ── ANIMATED RAIN EFFECT ── */
+  .rain-container {
+    position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden;
+  }
+
+  .raindrop {
+    position: absolute; top: -20px;
+    width: 1px; background: linear-gradient(to bottom, transparent, rgba(56,189,248,0.2));
+    animation: rain linear infinite;
+    border-radius: 50%;
+  }
+
+  @keyframes rain {
+    from { transform: translateY(-20px); opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 0.3; }
+    to   { transform: translateY(110vh); opacity: 0; }
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    padding: 1.1rem 3rem;
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(11,17,32,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-brand {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.82rem; color: var(--electric);
+    text-decoration: none; letter-spacing: 0.04em;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+
+  .nav-brand::before { content: '←'; }
+
+  .nav-links { display: flex; gap: 2.5rem; list-style: none; }
+  .nav-links a {
+    color: var(--text3); text-decoration: none;
+    font-size: 0.8rem; font-weight: 500;
+    letter-spacing: 0.05em; transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--electric); }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    justify-content: center;
+    padding: 7rem 3rem 5rem;
+    position: relative; overflow: hidden;
+  }
+
+  /* Cloud layers */
+  .cloud-layer {
+    position: absolute; pointer-events: none;
+  }
+
+  .cloud-1 {
+    top: 15%; left: -5%;
+    width: 600px; height: 200px;
+    background: radial-gradient(ellipse 60% 50% at 30% 50%, rgba(26,81,128,0.3) 0%, transparent 70%),
+                radial-gradient(ellipse 40% 60% at 70% 40%, rgba(26,81,128,0.2) 0%, transparent 60%);
+    animation: drift1 30s ease-in-out infinite alternate;
+  }
+
+  .cloud-2 {
+    top: 30%; right: -10%;
+    width: 500px; height: 180px;
+    background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(56,189,248,0.05) 0%, transparent 70%);
+    animation: drift2 25s ease-in-out infinite alternate;
+  }
+
+  .cloud-3 {
+    bottom: 20%; left: 40%;
+    width: 400px; height: 150px;
+    background: radial-gradient(ellipse 70% 60% at 40% 50%, rgba(20,184,166,0.04) 0%, transparent 70%);
+    animation: drift1 35s ease-in-out infinite alternate-reverse;
+  }
+
+  @keyframes drift1 { from { transform: translateX(0); } to { transform: translateX(40px); } }
+  @keyframes drift2 { from { transform: translateX(0); } to { transform: translateX(-50px); } }
+
+  .hero-content { position: relative; z-index: 2; }
+
+  .hero-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem; color: var(--electric);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    margin-bottom: 2rem;
+    display: flex; align-items: center; gap: 0.75rem;
+    opacity: 0; animation: fadeUp 0.9s ease forwards 0.3s;
+  }
+
+  .hero-tag::before { content: ''; width: 24px; height: 1px; background: var(--electric); }
+
+  /* Temperature indicator */
+  .temp-indicator {
+    display: inline-flex; align-items: center; gap: 1.2rem;
+    background: var(--mist);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.6rem 1.2rem;
+    margin-left: 1.5rem;
+    font-size: 0.72rem; color: var(--text3);
+  }
+
+  .temp-val { color: var(--electric); font-weight: 600; font-size: 0.9rem; }
+
+  .hero h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(2.8rem, 6vw, 5.5rem);
+    font-weight: 700; line-height: 1.05;
+    color: var(--lightning);
+    letter-spacing: -0.02em;
+    opacity: 0; animation: fadeUp 0.9s ease forwards 0.5s;
+  }
+
+  .hero h1 .accent {
+    color: var(--electric);
+    display: block;
+    font-size: 0.75em;
+    font-weight: 300;
+    letter-spacing: 0.02em;
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    margin-top: 0.3rem;
+  }
+
+  .hero-desc {
+    margin-top: 2rem;
+    font-size: 1.05rem; color: var(--text2);
+    max-width: 580px; line-height: 1.85; font-weight: 300;
+    font-family: 'Crimson Pro', serif;
+    opacity: 0; animation: fadeUp 0.9s ease forwards 0.7s;
+  }
+
+  .hero-pipeline {
+    margin-top: 2.5rem;
+    display: flex; align-items: center; gap: 0;
+    flex-wrap: wrap;
+    opacity: 0; animation: fadeUp 0.9s ease forwards 0.85s;
+  }
+
+  .pipe-node {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.7rem 1.2rem;
+    background: var(--storm2);
+    border: 1px solid var(--border);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem; color: var(--text2);
+    transition: all 0.3s;
+  }
+
+  .pipe-node:hover { background: var(--storm3); border-color: var(--border2); color: var(--electric); }
+  .pipe-node:first-child { border-radius: 6px 0 0 6px; }
+  .pipe-node:last-child { border-radius: 0 6px 6px 0; }
+  .pipe-node:not(:first-child) { border-left: none; }
+
+  .pipe-icon { font-size: 0.9rem; }
+  .pipe-arrow { color: var(--electric); font-size: 0.7rem; padding: 0 0.5rem; font-weight: 700; }
+
+  .hero-actions {
+    margin-top: 2.5rem; display: flex; gap: 1rem; flex-wrap: wrap;
+    opacity: 0; animation: fadeUp 0.9s ease forwards 1s;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.9rem 2rem; border-radius: 5px;
+    font-size: 0.85rem; font-weight: 600;
+    font-family: 'Space Grotesk', sans-serif;
+    letter-spacing: 0.02em;
+    text-decoration: none; transition: all 0.25s; border: none;
+  }
+
+  .btn-sky { background: var(--electric); color: var(--storm); }
+  .btn-sky:hover { background: var(--electric2); transform: translateY(-2px); box-shadow: 0 10px 28px rgba(56,189,248,0.35); }
+
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-outline:hover { border-color: var(--border2); color: var(--electric); transform: translateY(-2px); }
+
+  /* ── METRICS STRIP ── */
+  .metrics {
+    position: relative; z-index: 2;
+    background: var(--storm2);
+    border-top: 1px solid var(--border);
+    border-bottom: 2px solid var(--electric);
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    padding: 0;
+  }
+
+  .metric-item {
+    padding: 2.5rem 2rem; text-align: center;
+    border-right: 1px solid var(--border);
+    position: relative; overflow: hidden;
+  }
+
+  .metric-item::before {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--electric), transparent);
+    transform: scaleX(0); transition: transform 0.5s;
+  }
+
+  .metric-item:hover::before { transform: scaleX(1); }
+  .metric-item:last-child { border-right: none; }
+
+  .metric-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 2.4rem; font-weight: 700;
+    color: var(--electric); line-height: 1; margin-bottom: 0.4rem;
+  }
+
+  .metric-label { font-size: 0.75rem; font-weight: 500; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.4; }
+  .metric-sub { font-size: 0.68rem; color: var(--text3); margin-top: 0.2rem; font-style: italic; }
+
+  /* ── PIPELINE SECTION ── */
+  .pipeline-section {
+    position: relative; z-index: 2;
+    padding: 7rem 3rem;
+    max-width: 1200px; margin: 0 auto;
+  }
+
+  .section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem; color: var(--electric);
+    letter-spacing: 0.16em; text-transform: uppercase;
+    margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.6rem;
+  }
+
+  .section-label::after { content: ''; flex: 1; max-width: 28px; height: 1px; background: var(--electric); opacity: 0.35; }
+
+  h2 {
+    font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+    font-weight: 700; line-height: 1.2;
+    color: var(--lightning); margin-bottom: 1.5rem;
+    letter-spacing: -0.02em;
+  }
+
+  h2 em { font-style: normal; color: var(--electric); }
+
+  p { color: var(--text2); font-size: 0.96rem; margin-bottom: 1.2rem; line-height: 1.85; font-weight: 300; }
+  p strong { color: var(--text); font-weight: 500; }
+
+  /* Pipeline diagram */
+  .pipeline-diagram {
+    margin-top: 3rem;
+    display: flex; flex-direction: column; gap: 0;
+  }
+
+  .pipe-phase {
+    display: grid; grid-template-columns: 140px 1fr;
+    gap: 0; position: relative;
+  }
+
+  .pipe-phase:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 69px; top: 100%; height: 32px; width: 2px;
+    background: linear-gradient(to bottom, var(--electric), rgba(56,189,248,0.2));
+    z-index: 1;
+  }
+
+  .phase-num {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 2rem 1.5rem 2rem 0;
+  }
+
+  .phase-circle {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--storm2);
+    border: 2px solid var(--electric);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem; color: var(--electric); font-weight: 700;
+    flex-shrink: 0; margin-bottom: 0.5rem;
+    box-shadow: 0 0 12px rgba(56,189,248,0.2);
+  }
+
+  .phase-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem; color: var(--text3);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    text-align: center; line-height: 1.3;
+  }
+
+  .phase-card {
+    margin: 1.2rem 0;
+    padding: 1.8rem 2rem;
+    background: var(--storm2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    position: relative; overflow: hidden;
+    transition: all 0.3s;
+  }
+
+  .phase-card:hover { border-color: var(--border2); background: var(--storm3); }
+
+  .phase-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; bottom: 0; width: 3px;
+    background: var(--electric); opacity: 0.6;
+  }
+
+  .phase-card-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 0.75rem;
+  }
+
+  .phase-name { font-size: 1rem; font-weight: 600; color: var(--lightning); }
+
+  .phase-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem; padding: 0.25rem 0.6rem;
+    background: rgba(56,189,248,0.1);
+    border: 1px solid var(--border2);
+    border-radius: 3px; color: var(--electric);
+    letter-spacing: 0.06em;
+  }
+
+  .phase-desc { font-size: 0.88rem; color: var(--text2); line-height: 1.7; margin: 0; }
+
+  .phase-code {
+    margin-top: 0.9rem;
+    background: var(--storm);
+    border-radius: 6px; padding: 0.8rem 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem; color: var(--electric2);
+    border: 1px solid var(--border);
+    line-height: 1.6;
+  }
+
+  /* ── VISUALIZATIONS ── */
+  .viz-section {
+    position: relative; z-index: 2;
+    background: var(--storm2);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 7rem 3rem;
+  }
+
+  .viz-inner { max-width: 1200px; margin: 0 auto; }
+
+  .viz-card {
+    background: var(--storm3);
+    border-radius: 12px; overflow: hidden;
+    border: 1px solid var(--border);
+    transition: all 0.3s; margin-bottom: 1.5rem;
+  }
+
+  .viz-card:hover {
+    border-color: var(--border2);
+    transform: translateY(-3px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5), 0 0 24px rgba(56,189,248,0.06);
+  }
+
+  .viz-header {
+    padding: 0.8rem 1.5rem;
+    background: rgba(56,189,248,0.06);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .viz-header-left {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.66rem; color: var(--electric);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+
+  .viz-img {
+    width: 100%; display: block;
+    object-fit: contain;
+    background: #ffffff;
+  }
+
+  .viz-body { padding: 1.5rem 1.8rem; }
+
+  .viz-title {
+    font-size: 1rem; font-weight: 600;
+    color: var(--lightning); margin-bottom: 0.4rem;
+  }
+
+  .viz-desc {
+    font-size: 0.85rem; color: var(--text2);
+    line-height: 1.7; margin: 0; font-weight: 300;
+  }
+
+  .viz-insight {
+    margin-top: 0.75rem; padding: 0.7rem 1rem;
+    background: rgba(56,189,248,0.06);
+    border-left: 2px solid var(--electric);
+    border-radius: 0 4px 4px 0;
+    font-size: 0.8rem; color: var(--electric2);
+    font-family: 'Space Mono', monospace;
+    line-height: 1.5;
+  }
+
+  .viz-two { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  .viz-featured { margin-bottom: 1.5rem; }
+
+  /* ── CHALLENGES ── */
+  .challenges-section {
+    position: relative; z-index: 2;
+    max-width: 1200px; margin: 0 auto;
+    padding: 7rem 3rem;
+  }
+
+  .challenge-grid { display: flex; flex-direction: column; gap: 1.2rem; margin-top: 2.5rem; }
+
+  .challenge-card {
+    display: grid; grid-template-columns: 220px 1fr;
+    gap: 2.5rem; padding: 2rem;
+    background: var(--storm2);
+    border: 1px solid var(--border);
+    border-radius: 10px; align-items: start;
+    transition: all 0.3s;
+  }
+
+  .challenge-card:hover { border-color: var(--border2); background: var(--storm3); }
+
+  .challenge-problem { }
+  .challenge-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem; color: var(--gold);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 0.5rem; display: block;
+  }
+
+  .challenge-problem-text { font-size: 0.85rem; color: var(--text2); line-height: 1.6; }
+
+  .challenge-solution { }
+  .solution-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem; color: var(--teal);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 0.5rem; display: block;
+  }
+
+  .challenge-solution-text { font-size: 0.88rem; color: var(--text); line-height: 1.7; }
+
+  .code-inline {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8em; color: var(--electric2);
+    background: rgba(56,189,248,0.08);
+    padding: 0.15rem 0.4rem; border-radius: 3px;
+  }
+
+  /* ── STACK ── */
+  .stack-section {
+    position: relative; z-index: 2;
+    background: var(--storm2);
+    border-top: 1px solid var(--border);
+    padding: 5rem 3rem;
+  }
+
+  .stack-inner { max-width: 1200px; margin: 0 auto; }
+
+  .stack-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 2rem; }
+
+  .stack-category {
+    padding: 1.5rem;
+    background: var(--storm3);
+    border: 1px solid var(--border);
+    border-radius: 8px; transition: all 0.3s;
+  }
+
+  .stack-category:hover { border-color: var(--border2); }
+
+  .stack-cat-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.66rem; color: var(--electric);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+
+  .stack-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem; padding: 0.25rem 0.55rem;
+    border-radius: 3px; background: var(--storm2);
+    color: var(--text3); border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+  .tag:hover { border-color: var(--border2); color: var(--electric); }
+
+  /* ── CONCLUSION ── */
+  .conclusion {
+    position: relative; z-index: 2;
+    background: var(--storm);
+    padding: 8rem 3rem; text-align: center;
+    border-top: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .conclusion::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(56,189,248,0.07) 0%, transparent 55%);
+  }
+
+  .conclusion h2 {
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    max-width: 760px; margin: 0 auto 1.5rem;
+    position: relative; z-index: 1;
+  }
+
+  .conclusion p {
+    max-width: 560px; margin: 0 auto 1.5rem;
+    position: relative; z-index: 1;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    position: relative; z-index: 2;
+    padding: 2.5rem 3rem; background: #060b14;
+    display: flex; justify-content: space-between;
+    align-items: center; flex-wrap: wrap; gap: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .footer-brand { font-family: 'Space Mono', monospace; font-size: 0.82rem; color: var(--electric); }
+  .footer-links { display: flex; gap: 1.5rem; }
+  .footer-links a { color: var(--text3); text-decoration: none; font-size: 0.8rem; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--electric); }
+  .footer-credit { width: 100%; text-align: center; font-size: 0.72rem; color: var(--text3); padding-top: 1.2rem; border-top: 1px solid var(--border); margin-top: 0.5rem; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes bounce { 0%,100%{transform:translateX(-50%) translateY(0);} 50%{transform:translateX(-50%) translateY(8px);} }
+
+  .fade-up { opacity: 0; transform: translateY(22px); transition: opacity 0.65s ease, transform 0.65s ease; }
+  .fade-up.visible { opacity: 1; transform: translateY(0); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    nav { padding: 1rem 1.5rem; }
+    .nav-links { display: none; }
+    .hero { padding: 6rem 1.5rem 4rem; }
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .pipeline-section, .viz-inner, .challenges-section, .stack-inner { padding: 4rem 1.5rem; }
+    .viz-two { grid-template-columns: 1fr; }
+    .pipe-phase { grid-template-columns: 80px 1fr; }
+    .challenge-card { grid-template-columns: 1fr; }
+    .stack-grid { grid-template-columns: repeat(2, 1fr); }
+    .viz-section, .stack-section { padding: 4rem 1.5rem; }
+    .conclusion, footer { padding: 4rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Rain effect -->
+<div class="rain-container" id="rain"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="https://cece15.github.io" class="nav-brand">Cynthia Mutua</a>
+  <ul class="nav-links">
+    <li><a href="#pipeline">Pipeline</a></li>
+    <li><a href="#insights">Insights</a></li>
+    <li><a href="#engineering">Engineering</a></li>
+    <li><a href="https://lookerstudio.google.com/reporting/7f2762fb-3187-4767-ad7e-ee9708269c04" target="_blank">Dashboard ↗</a></li>
+    <li><a href="https://github.com/cece15/weather-etl-pipeline" target="_blank">GitHub ↗</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="cloud-layer cloud-1"></div>
+  <div class="cloud-layer cloud-2"></div>
+  <div class="cloud-layer cloud-3"></div>
+
+  <div class="hero-content">
+    <div class="hero-tag">
+      Data Engineering · ETL · GCP · BigQuery
+      <div class="temp-indicator">
+        <span>Avg Temp</span>
+        <span class="temp-val">17.89°C</span>
+        <span>Humidity</span>
+        <span class="temp-val">0.68</span>
+      </div>
+    </div>
+
+    <h1>
+      Weather Data
+      <span class="accent">A production ETL pipeline — from raw CSV to cloud analytics</span>
+    </h1>
+
+    <p class="hero-desc">
+      96,000+ historical weather records. Five modular pipeline phases. Two storage targets. One live dashboard. This project demonstrates what production-grade data engineering looks like in practice — not just in theory.
+    </p>
+
+    <div class="hero-pipeline">
+      <div class="pipe-node"><span class="pipe-icon">📥</span> EXTRACT</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node"><span class="pipe-icon">⚙️</span> TRANSFORM</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node"><span class="pipe-icon">💾</span> LOAD · SQLite</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node"><span class="pipe-icon">☁️</span> LOAD · BigQuery</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node"><span class="pipe-icon">📊</span> VISUALIZE</div>
+    </div>
+
+    <div class="hero-actions">
+      <a href="https://lookerstudio.google.com/reporting/7f2762fb-3187-4767-ad7e-ee9708269c04" target="_blank" class="btn btn-sky">View Live Dashboard ↗</a>
+      <a href="https://github.com/cece15/weather-etl-pipeline" target="_blank" class="btn btn-outline">View Code on GitHub ↗</a>
+    </div>
+  </div>
+</div>
+
+<!-- METRICS -->
+<div class="metrics">
+  <div class="metric-item fade-up">
+    <div class="metric-val">96K+</div>
+    <div class="metric-label">Records Processed</div>
+    <div class="metric-sub">historical weather readings</div>
+  </div>
+  <div class="metric-item fade-up">
+    <div class="metric-val">5</div>
+    <div class="metric-label">Pipeline Phases</div>
+    <div class="metric-sub">Extract → Visualize</div>
+  </div>
+  <div class="metric-item fade-up">
+    <div class="metric-val">2</div>
+    <div class="metric-label">Storage Targets</div>
+    <div class="metric-sub">SQLite + BigQuery / GCP</div>
+  </div>
+  <div class="metric-item fade-up">
+    <div class="metric-val">4</div>
+    <div class="metric-label">Dashboard Pages</div>
+    <div class="metric-sub">live · interactive · Looker Studio</div>
+  </div>
+</div>
+
+<!-- PIPELINE SECTION -->
+<div class="pipeline-section" id="pipeline">
+  <div class="section-label">The Pipeline</div>
+  <h2>Five phases. Every one <em>production-ready.</em></h2>
+  <p>Each phase is a distinct Python function — modular, testable, and independently deployable. The entire pipeline is orchestrated by a single <span class="code-inline">run_pipeline()</span> call with structured logging at every step.</p>
+
+  <div class="pipeline-diagram">
+    <div class="pipe-phase fade-up">
+      <div class="phase-num">
+        <div class="phase-circle">01</div>
+        <div class="phase-tag">EXTRACT</div>
+      </div>
+      <div class="phase-card">
+        <div class="phase-card-header">
+          <div class="phase-name">Data Ingestion & Validation</div>
+          <div class="phase-badge">extract()</div>
+        </div>
+        <p class="phase-desc">Loads 96K+ rows from CSV using pandas with file existence check, required column validation against a predefined schema, and immediate logging of row counts and column inventory. Raises typed exceptions on failure — never silently passes bad data downstream.</p>
+        <div class="phase-code">→ 96,453 rows extracted · 9 columns validated · schema confirmed</div>
+      </div>
+    </div>
+
+    <div class="pipe-phase fade-up">
+      <div class="phase-num">
+        <div class="phase-circle">02</div>
+        <div class="phase-tag">TRANSFORM</div>
+      </div>
+      <div class="phase-card">
+        <div class="phase-card-header">
+          <div class="phase-name">Cleaning · Normalization · Feature Engineering</div>
+          <div class="phase-badge">transform()</div>
+        </div>
+        <p class="phase-desc">Three sub-phases: <strong>2.1 Cleaning</strong> — deduplication, null removal with row-count logging before and after. <strong>2.2 Normalization</strong> — datetime parsing with coerce + invalid date detection, temperature rounding, humidity clipped to [0,1]. <strong>2.3 Feature Engineering</strong> — derives Part_of_Day (Morning/Afternoon/Evening/Night), Weekday, and Hour from timestamps for temporal analysis.</p>
+        <div class="phase-code">→ 641 rows removed · 3 features engineered · Part_of_Day · Weekday · Hour</div>
+      </div>
+    </div>
+
+    <div class="pipe-phase fade-up">
+      <div class="phase-num">
+        <div class="phase-circle">03a</div>
+        <div class="phase-tag">LOAD · LOCAL</div>
+      </div>
+      <div class="phase-card">
+        <div class="phase-card-header">
+          <div class="phase-name">SQLite — Local Persistence</div>
+          <div class="phase-badge">load_sqlite()</div>
+        </div>
+        <p class="phase-desc">Persists the full cleaned dataset to <span class="code-inline">weather_cleaned</span> and a daily temperature aggregation to <span class="code-inline">daily_avg_temp</span>. Both tables include post-load row-count assertion — if the database row count doesn't match the DataFrame, the pipeline raises an error before continuing.</p>
+        <div class="phase-code">→ weather_cleaned: 95,812 rows · daily_avg_temp: 3,652 rows · assert ✓</div>
+      </div>
+    </div>
+
+    <div class="pipe-phase fade-up">
+      <div class="phase-num">
+        <div class="phase-circle">03b</div>
+        <div class="phase-tag">LOAD · CLOUD</div>
+      </div>
+      <div class="phase-card">
+        <div class="phase-card-header">
+          <div class="phase-name">Google BigQuery — Cloud Analytics</div>
+          <div class="phase-badge">load_bigquery()</div>
+        </div>
+        <p class="phase-desc">Sanitizes all column names using regex (<span class="code-inline">re.sub(r"[^a-zA-Z0-9_]", "_", name)</span>) for BigQuery schema compatibility. Authenticates via GCP OAuth with graceful Colab/local fallback. Uploads both tables using pandas-gbq with <span class="code-inline">if_exists="replace"</span> to support re-runs.</p>
+        <div class="phase-code">→ etl-final-project.weather_data.weather_cleaned → BigQuery ✓</div>
+      </div>
+    </div>
+
+    <div class="pipe-phase fade-up">
+      <div class="phase-num">
+        <div class="phase-circle">04</div>
+        <div class="phase-tag">VERIFY + VISUALIZE</div>
+      </div>
+      <div class="phase-card">
+        <div class="phase-card-header">
+          <div class="phase-name">Integrity Checks + Dashboard Output</div>
+          <div class="phase-badge">verify() + visualise()</div>
+        </div>
+        <p class="phase-desc">SQL spot-check queries confirm both table row counts and run a Part_of_Day aggregation to validate feature engineering output. Matplotlib charts saved to <span class="code-inline">outputs/</span>. Looker Studio dashboards built from BigQuery data — 4 pages covering temperature trends, humidity, wind speed, and the Part_of_Day × Weekday heatmap.</p>
+        <div class="phase-code">→ both tables verified · 4-page Looker Studio dashboard live</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- VISUALIZATIONS -->
+<div class="viz-section" id="insights">
+  <div class="viz-inner">
+    <div class="section-label">What the Data Revealed</div>
+    <h2>10 years of weather — <em>four insights</em></h2>
+    <p>These visualizations are built directly from the BigQuery output — the same data that flows through the pipeline above. Each chart answers a specific analytical question about historical weather patterns.</p>
+
+    <!-- Featured: Daily trend -->
+    <div class="viz-card viz-featured fade-up">
+      <div class="viz-header">
+        <div class="viz-header-left">📈 Page 1 — Daily Temperature Trend + KPI Scorecards · 2006–2016</div>
+      </div>
+      <img src="figures/Daily_Temperature_Trend_2006-2016_.png" alt="Daily temperature trend 2006-2016 with KPI scorecards" class="viz-img" style="max-height:420px; object-fit:contain; padding:0;">
+      <div class="viz-body">
+        <div class="viz-title">10 years of seasons — captured in a single chart</div>
+        <p class="viz-desc">The regular oscillation between ~9°C and ~24°C repeats predictably across all 10 years, confirming strong seasonal patterns in the dataset. The KPI scorecards at the bottom show dataset-wide averages directly from BigQuery: 17.89°C average temperature, 0.68 humidity, 10.14 km/h wind speed. These are the numbers that power the full dashboard.</p>
+        <div class="viz-insight">→ Feature engineered from raw timestamps: Month · Weekday · Part_of_Day — all driving these downstream visualizations</div>
+      </div>
+    </div>
+
+    <!-- Two column -->
+    <div class="viz-two">
+      <div class="viz-card fade-up">
+        <div class="viz-header">
+          <div class="viz-header-left">🌡️ Page 2 — Temperature Analysis by Time of Day & Weekday</div>
+        </div>
+        <img src="figures/Temperature_Analysis_by_Time.png" alt="Temperature analysis by part of day and weekday" class="viz-img" style="max-height:300px; object-fit:contain; background:#fff; padding:1rem;">
+        <div class="viz-body">
+          <div class="viz-title">Afternoon is consistently 8°C hotter than Night</div>
+          <p class="viz-desc">The Part_of_Day feature engineered during transformation proves analytically valuable — afternoons average 22.7°C vs 14.7°C at night. Weekday analysis shows temperature is stable across days of the week, confirming the seasonal (not weekly) nature of temperature variation.</p>
+          <div class="viz-insight">→ Part_of_Day engineered from Hour: Morning 5–11, Afternoon 12–16, Evening 17–20, Night 21–4</div>
+        </div>
+      </div>
+
+      <div class="viz-card fade-up">
+        <div class="viz-header">
+          <div class="viz-header-left">💧 Page 3 — Humidity & Wind Speed Monthly Trends</div>
+        </div>
+        <img src="figures/Humidity___Win_Speeds_Trends.png" alt="Humidity and wind speed monthly trends" class="viz-img" style="max-height:300px; object-fit:contain; background:#fff; padding:1rem;">
+        <div class="viz-body">
+          <div class="viz-title">Wind speed drops as the year progresses; humidity rises</div>
+          <p class="viz-desc">Wind speeds peak in early spring (~13 km/h) and decline through autumn (~9 km/h). Humidity shows an inverse pattern — relatively stable mid-year, rising toward year-end. These opposing trends suggest a seasonal weather cycle where spring brings drier, windier conditions.</p>
+          <div class="viz-insight">→ Both metrics aggregated by Month using GROUP BY on BigQuery output — monthly averages from 96K+ rows</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Heatmap -->
+    <div class="viz-card fade-up">
+      <div class="viz-header">
+        <div class="viz-header-left">🔥 Page 4 — Temperature Heatmap: Part of Day × Weekday</div>
+      </div>
+      <img src="figures/Temperature_Heatmap_-_Part_of_Day_x_Weekday.png" alt="Temperature heatmap part of day by weekday" class="viz-img" style="max-height:300px; object-fit:contain; background:#fff; padding:1.5rem;">
+      <div class="viz-body">
+        <div class="viz-title">The most analytical chart in the dashboard — and the most telling</div>
+        <p class="viz-desc">This pivot table heatmap crosses Part_of_Day (rows) with Weekday (columns) — both features engineered during the Transform phase. The gradient from white (Night, ~14.6°C) to dark blue (Afternoon, ~23°C) is consistent across every single day of the week. <strong>Temperature variation is driven entirely by time of day, not day of week</strong> — a clean, analytically rigorous finding made possible by the feature engineering step.</p>
+        <div class="viz-insight">→ This chart validates the feature engineering: Part_of_Day captures real temperature structure; Weekday confirms it's not a confound</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ENGINEERING CHALLENGES -->
+<div class="challenges-section" id="engineering">
+  <div class="section-label">Engineering Challenges</div>
+  <h2>Real problems. <em>Real solutions.</em></h2>
+  <p>Every engineering project encounters unexpected constraints. These are the specific challenges encountered building this pipeline — and how each was solved with sound engineering judgment.</p>
+
+  <div class="challenge-grid">
+    <div class="challenge-card fade-up">
+      <div class="challenge-problem">
+        <span class="challenge-tag">⚠ Challenge 1</span>
+        <div class="challenge-problem-text">BigQuery rejects column names containing spaces, parentheses, and special characters. The weather dataset had columns like <em>"Temperature (C)"</em> and <em>"Wind Speed (km/h)"</em> — none of which are valid BigQuery schema names.</div>
+      </div>
+      <div class="challenge-solution">
+        <span class="solution-tag">✓ Solution</span>
+        <div class="challenge-solution-text">Implemented a <span class="code-inline">clean_column_name()</span> utility using <span class="code-inline">re.sub(r"[^a-zA-Z0-9_]", "_", name)</span> to sanitize every column name before upload. Added a digit-prefix guard for columns starting with numbers. Applied consistently via list comprehension — all 9 columns sanitized in one step before every BigQuery operation.</div>
+      </div>
+    </div>
+
+    <div class="challenge-card fade-up">
+      <div class="challenge-problem">
+        <span class="challenge-tag">⚠ Challenge 2</span>
+        <div class="challenge-problem-text">Docker container specs were insufficient for local PostgreSQL — couldn't configure the container environment to run a local database server reliably, which was the original target for local storage.</div>
+      </div>
+      <div class="challenge-solution">
+        <span class="solution-tag">✓ Solution</span>
+        <div class="challenge-solution-text">Pivoted to a <strong>dual-target architecture</strong> that turned the constraint into a feature: SQLite (Python built-in, zero config) for local persistence + BigQuery for cloud-scale analytics. This is actually a stronger design — each storage target serves a distinct purpose, and the pipeline works identically in both local and cloud environments.</div>
+      </div>
+    </div>
+
+    <div class="challenge-card fade-up">
+      <div class="challenge-problem">
+        <span class="challenge-tag">⚠ Challenge 3</span>
+        <div class="challenge-problem-text">Raw datetime strings in the source data were in inconsistent format and needed conversion to pandas datetime objects before any temporal feature extraction could proceed.</div>
+      </div>
+      <div class="challenge-solution">
+        <span class="solution-tag">✓ Solution</span>
+        <div class="challenge-solution-text"><span class="code-inline">pd.to_datetime(df["Formatted Date"], errors="coerce")</span> with a downstream NaN count check and conditional drop. Any unparseable dates are logged with WARNING level before removal — the pipeline never silently drops data. This approach is production-safe: it handles edge cases without failing on partial bad data.</div>
+      </div>
+    </div>
+
+    <div class="challenge-card fade-up">
+      <div class="challenge-problem">
+        <span class="challenge-tag">⚠ Challenge 4</span>
+        <div class="challenge-problem-text">GCP authentication needed to work securely in Google Colab without exposing service account credentials in code, while also supporting local development runs outside Colab.</div>
+      </div>
+      <div class="challenge-solution">
+        <span class="solution-tag">✓ Solution</span>
+        <div class="challenge-solution-text">Wrapped <span class="code-inline">google.colab.auth.authenticate_user()</span> in a try/except ImportError block — in Colab it triggers the built-in OAuth flow; outside Colab it gracefully falls back to <span class="code-inline">GOOGLE_APPLICATION_CREDENTIALS</span> env var. Same pipeline code, same result, two environments — no credentials hardcoded anywhere.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TECH STACK -->
+<div class="stack-section">
+  <div class="stack-inner">
+    <div class="section-label">Tech Stack</div>
+    <h2 style="font-size:1.6rem; margin-bottom:0.5rem;">Built with</h2>
+    <div class="stack-grid fade-up">
+      <div class="stack-category">
+        <div class="stack-cat-name">Core Language</div>
+        <div class="stack-tags">
+          <span class="tag">Python 3.10</span>
+          <span class="tag">pandas</span>
+          <span class="tag">NumPy</span>
+        </div>
+      </div>
+      <div class="stack-category">
+        <div class="stack-cat-name">Cloud & Storage</div>
+        <div class="stack-tags">
+          <span class="tag">Google BigQuery</span>
+          <span class="tag">GCP</span>
+          <span class="tag">pandas-gbq</span>
+          <span class="tag">SQLite</span>
+        </div>
+      </div>
+      <div class="stack-category">
+        <div class="stack-cat-name">Visualization</div>
+        <div class="stack-tags">
+          <span class="tag">Looker Studio</span>
+          <span class="tag">matplotlib</span>
+        </div>
+      </div>
+      <div class="stack-category">
+        <div class="stack-cat-name">Infrastructure</div>
+        <div class="stack-tags">
+          <span class="tag">Google Colab</span>
+          <span class="tag">GitHub</span>
+          <span class="tag">GitHub Pages</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONCLUSION -->
+<div class="conclusion">
+  <h2>Production-pattern engineering <em>on real data.</em></h2>
+  <p style="position:relative;z-index:1;">Modular functions. Structured logging. Typed exception handling. Row-count validation. Regex schema sanitization. Dual-target loading. Live cloud dashboards. This pipeline does what production analytics engineering does — it just happens to be about weather.</p>
+  <p style="position:relative;z-index:1; color:rgba(147,184,212,0.5); font-size:0.85rem;">MS Data Science & Analytics · Grand Valley State University · Python · BigQuery · GCP</p>
+  <div style="margin-top:2.5rem; display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; position:relative; z-index:1;">
+    <a href="https://lookerstudio.google.com/reporting/7f2762fb-3187-4767-ad7e-ee9708269c04" target="_blank" class="btn btn-sky">View Live Dashboard ↗</a>
+    <a href="https://github.com/cece15/weather-etl-pipeline" target="_blank" class="btn btn-outline">View Code on GitHub ↗</a>
+    <a href="https://cece15.github.io" class="btn btn-outline">← Back to Portfolio</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-brand">cece15 // weather-etl-pipeline</div>
+  <div class="footer-links">
+    <a href="https://linkedin.com/in/cynthia-mutua" target="_blank">LinkedIn</a>
+    <a href="https://github.com/cece15" target="_blank">GitHub</a>
+    <a href="https://cece15.github.io" target="_blank">Portfolio</a>
+  </div>
+  <div class="footer-credit">Cynthia Mutua · MS Data Science & Analytics · Grand Valley State University</div>
+</footer>
+
+<script>
+  // Rain effect
+  const rainContainer = document.getElementById('rain');
+  for (let i = 0; i < 60; i++) {
+    const drop = document.createElement('div');
+    drop.className = 'raindrop';
+    drop.style.left = Math.random() * 100 + 'vw';
+    drop.style.height = (Math.random() * 60 + 30) + 'px';
+    drop.style.animationDuration = (Math.random() * 2 + 1.5) + 's';
+    drop.style.animationDelay = (Math.random() * 3) + 's';
+    drop.style.opacity = Math.random() * 0.3 + 0.1;
+    rainContainer.appendChild(drop);
+  }
+
+  // Scroll animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) setTimeout(() => entry.target.classList.add('visible'), i * 80);
+    });
+  }, { threshold: 0.06, rootMargin: '0px 0px -30px 0px' });
+
+  document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+  document.querySelectorAll('.metrics .metric-item').forEach((el, i) => {
+    el.style.transitionDelay = `${i * 0.1}s`;
+  });
+</script>
+</body>
+</html>
