@@ -12,6 +12,11 @@ A production-pattern ETL pipeline that extracts historical weather data from CSV
 
 ---
 
+## Live Project Page
+
+> **[View Interactive Project Page](https://cece15.github.io/weather-etl-pipeline)**
+> Full pipeline documentation with architecture diagram and technical challenges
+
 ## Dashboard Preview
 
 > [View Notebook on Google Colab](https://colab.research.google.com/drive/19O1rZ1WewTlzk16MWzNl0k0uApxSMDyR?usp=sharing)
