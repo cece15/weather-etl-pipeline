@@ -8,7 +8,7 @@
 ![pandas](https://img.shields.io/badge/pandas-150458?style=flat&logo=pandas&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat)
 
-A production-pattern ETL pipeline that extracts historical weather data from CSV, applies multi-step transformations including feature engineering and schema normalization, and loads into both a local SQLite database and Google BigQuery on GCP, with interactive dashboards in Looker Studio.
+An ETL pipeline for ten years of hourly weather readings from Szeged, Hungary (2006–2016). It cleans the data, adds time-of-day features, loads the result into a local SQLite database and Google BigQuery, and feeds a Looker Studio dashboard.
 
 ---
 
@@ -63,14 +63,13 @@ A production-pattern ETL pipeline that extracts historical weather data from CSV
 
 ## Key Features
 
-- **Dual-target loading** — data simultaneously persisted to local SQLite and Google BigQuery
-- **Production-style modular code** — each ETL phase is an isolated function, orchestrated by `run_pipeline()`
+- **Two load targets** — the cleaned data goes to a local SQLite database and to Google BigQuery
+- **Modular version** — the final notebook cell rewrites each ETL phase as its own function, run by `run_pipeline()`
 - **BigQuery schema compatibility** — regex-based column sanitization handles special characters, spaces, and reserved keywords
 - **Structured logging** — INFO / WARNING / ERROR levels written to both console and `etl_pipeline.log`
-- **Comprehensive error handling** — try/except blocks at every stage with row-count validation and table existence checks
+- **Error handling** — try/except blocks at each stage, with row-count checks and table existence checks
 - **Feature engineering** — derives `Part of Day`, `Weekday`, and `Hour` from raw timestamps
 - **Cloud authentication** — secure GCP OAuth via Google Colab's built-in auth flow
-- **Version controlled** — full pipeline on GitHub with clean commit history
 
 ---
 
@@ -79,13 +78,13 @@ A production-pattern ETL pipeline that extracts historical weather data from CSV
 ```
 weather-etl-pipeline/
 │
-├── etl_pipeline.py          # Main pipeline: extract, transform, load, orchestrate
-├── requirements.txt         # Python dependencies
-├── data/
-│   └── weatherHistory1.csv  # Source dataset (96K+ rows)
-├── outputs/
-│   └── etl_pipeline.log     # Auto-generated run log
+├── ETL_Pipeline_Project (1).ipynb   # Full pipeline: extract, transform, load, verify, visualize
+├── index.html                       # Project page (GitHub Pages)
+├── figures/                         # Charts from the analysis
 └── README.md
+
+The source CSV ("Weather in Szeged 2006–2016" on Kaggle) is not committed. Download it, save it
+as `weatherHistory1.csv` and upload it to the notebook's working directory before running.
 ```
 
 ---
@@ -127,45 +126,31 @@ weather-etl-pipeline/
 Open the notebook directly:
 [Open in Colab](https://colab.research.google.com/drive/19O1rZ1WewTlzk16MWzNl0k0uApxSMDyR?usp=sharing)
 
-### Option 2: Local Setup
+### Option 2: Run locally in Jupyter
 
-**Prerequisites**
-```bash
-Python 3.10+
-A Google Cloud project with BigQuery API enabled
-```
+You need Python 3.10+ and a Google Cloud project with the BigQuery API enabled.
 
-**Install dependencies**
 ```bash
 git clone https://github.com/cece15/weather-etl-pipeline.git
 cd weather-etl-pipeline
-pip install -r requirements.txt
-```
-
-**Configure GCP credentials**
-```bash
+pip install pandas matplotlib seaborn google-cloud-bigquery pandas-gbq jupyter
 export GOOGLE_APPLICATION_CREDENTIALS="path/to/your/service-account-key.json"
+jupyter notebook "ETL_Pipeline_Project (1).ipynb"
 ```
 
-**Run the pipeline**
-```bash
-python etl_pipeline.py
-```
+The authentication cells use `google.colab.auth`; outside Colab, skip them and rely on
+the credentials variable above.
 
 ---
 
-## Sample Output
+## Row counts
 
-```
-[INFO]  Starting ETL pipeline...
-[INFO]  Extracted 96,453 rows from weatherHistory1.csv
-[INFO]  Columns validated: all required fields present
-[INFO]  Transformation complete: 96,453 → 95,812 rows (641 duplicates/nulls removed)
-[INFO]  Feature engineering complete: Part_of_Day, Weekday, Hour added
-[INFO]  SQLite load verified: 95,812 rows in weather_cleaned
-[INFO]  BigQuery upload complete: weather_data.weather_cleaned
-[INFO]  Pipeline completed successfully in 47.3s
-```
+| Stage | Rows |
+|---|---|
+| Extracted from CSV | 96,453 |
+| After removing duplicates and missing values | 95,912 (541 removed) |
+| Loaded to SQLite `weather_cleaned` | 95,912 |
+| Loaded to BigQuery `weather_data.weather_cleaned` | 95,912 |
 
 ---
 
@@ -174,7 +159,7 @@ python etl_pipeline.py
 | Challenge | Solution |
 |---|---|
 | BigQuery rejects column names with spaces/special chars | Regex sanitization: `re.sub(r'[^a-zA-Z0-9_]', '_', name)` |
-| Datetime strings needed for temporal analysis | `pd.to_datetime()` with `errors='coerce'` for safe conversion |
+| Timestamps mix two UTC offsets (+01:00 winter, +02:00 summer) | Parse with `pd.to_datetime(..., utc=True)` and convert to `Europe/Budapest`. The first version used `errors='coerce'`, which silently emptied the 39,902 winter timestamps and labeled them all Night; this is now fixed |
 | Secure GCP auth in Colab | `google.colab.auth.authenticate_user()` |
 | Docker container specs insufficient for local Postgres | Pivoted to SQLite + BigQuery dual-target architecture |
 
@@ -182,9 +167,21 @@ python etl_pipeline.py
 
 ## Insights from Analysis
 
-- **Night** records the highest cumulative temperature — consistent with sustained heat retention
-- **Wind speed peaks between 2–6 PM** — aligns with thermal mixing from surface heating
-- **Inverse relationship** observed between afternoon humidity and wind speed — typical diurnal pattern
+Corrected results, after the time zone fix:
+
+| Part of Day | Hours | Average temperature |
+|---|---|---|
+| Morning | 5–11 | 10.8 °C |
+| Afternoon | 12–16 | 16.1 °C |
+| Evening | 17–20 | 13.9 °C |
+| Night | 21–4 | 9.4 °C |
+
+- Monthly averages run from 0.8 °C in January to 23.0 °C in July.
+- Wind is strongest from about 11:00 to 15:00, when humidity is lowest.
+- Day of the week makes no meaningful difference to temperature.
+
+The Looker Studio dashboard was built from the first run and still reflects the time zone error
+until it is refreshed with the corrected data.
 
 ---
 
